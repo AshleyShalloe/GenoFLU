@@ -11,6 +11,7 @@ import textwrap
 import pandas as pd
 import operator
 import subprocess
+import uuid
 from collections import defaultdict
 from collections import Counter
 from datetime import datetime
@@ -229,7 +230,13 @@ class GenoFLU:
         except (TypeError, ValueError, KeyError) as e:
             metadata_dict["Collection Year"] = "n/a"
         try:
-            metadata_format_string = f'A/{metadata_dict["species"]}/{metadata_dict["state"]}/{root_name}/{metadata_dict["Collection Year"]}'
+            metadata_format_string = "/".join([
+                'A',
+                metadata_dict["species"],
+                metadata_dict["state"],
+                root_name,
+                metadata_dict["Collection Year"]
+            ])
         except (TypeError, ValueError, KeyError) as e:
             metadata_format_string = "No Metadata"
         self.metadata_dict = metadata_dict
@@ -241,15 +248,18 @@ class GenoFLU:
         reference_fasta_files = glob(os.path.join(self.FASTA_dir, "*.fasta"))
         reference_fasta = "\n".join([Path(x).read_text() for x in reference_fasta_files])
         
+        ## ideally we'd cache the db rather than 
+        ## generating it again on every run
+        
         subprocess.run(
             [
                 "makeblastdb",
                 "-dbtype",
                 "nucl",
                 "-out",
-                "hpai_geno_db",
+                f"hpai_geno_db_{tempuuid}",
                 "-title",
-                "hpai_geno_db",
+                f"hpai_geno_db_{tempuuid}",
             ],
             input=str.encode(reference_fasta),
             stderr=subprocess.DEVNULL,
@@ -261,7 +271,7 @@ class GenoFLU:
             FASTA=self.FASTA_abs_path,
             format="6 qseqid qseq length nident pident mismatch evalue bitscore sacc stitle",
             num_alignment=1,
-            blast_db="hpai_geno_db",
+            blast_db=f"hpai_geno_db_{tempuuid}",
             num_threads=2,
         )
 
@@ -298,7 +308,7 @@ class GenoFLU:
             blast_genotyping_hpia_temp[item] = blast_genotyping_hpia[item]
         self.blast_results = blast_genotyping_hpia_temp
         self.blast_genotyping_hpia = blast_genotyping_hpia
-        blast_dir = f"{self.sample_name}_blast_hpia_genotyping_dir"
+        blast_dir = f"{self.sample_name}_blast_hpia_genotyping_dir_{tempuuid}"
         os.makedirs(blast_dir)
         files_grab = []
         for files in (
@@ -485,6 +495,9 @@ if __name__ == "__main__":  # execute if directly access by the interpreter
         default=os.getcwd(),
     )
     args = parser.parse_args()
+    
+    ## random suffix for threadsafety...
+    tempuuid = f"{uuid.uuid4()}"
 
     print(f"\n{os.path.basename(__file__)} set arguements:\n")
     for key, value in vars(args).items():
@@ -552,7 +565,7 @@ if __name__ == "__main__":  # execute if directly access by the interpreter
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
     files_grab = []
-    for files in ("hpai_geno_db.*", "slurm*.out"):
+    for files in (f"hpai_geno_db_{tempuuid}.*", "slurm*.out"):
         files_grab.extend(glob(files))
     for each in files_grab:
         shutil.move(each, temp_dir)
@@ -561,3 +574,4 @@ if __name__ == "__main__":  # execute if directly access by the interpreter
         shutil.rmtree(temp_dir)
 
 # Created 2023 by Tod Stuber
+# Tweaked 2024 by Ashley Shalloe
