@@ -12,6 +12,7 @@ import pandas as pd
 import operator
 import subprocess
 import uuid
+import tempfile
 from collections import defaultdict
 from collections import Counter
 from datetime import datetime
@@ -308,8 +309,7 @@ class GenoFLU:
             blast_genotyping_hpia_temp[item] = blast_genotyping_hpia[item]
         self.blast_results = blast_genotyping_hpia_temp
         self.blast_genotyping_hpia = blast_genotyping_hpia
-        blast_dir = f"{self.sample_name}_blast_hpia_genotyping_dir_{tempuuid}"
-        os.makedirs(blast_dir)
+        blast_dir = tempfile.TemporaryDirectory(prefix=self.sample_name, suffix="blast_hpia_genotyping_dir")
         files_grab = []
         for files in (
             "*_blast*txt",
@@ -317,11 +317,11 @@ class GenoFLU:
         ):
             files_grab.extend(glob(files))
         for each in files_grab:
-            shutil.move(each, blast_dir)
+            shutil.move(each, blast_dir.name)
         if self.debug:
             pass
         else:
-            shutil.rmtree(blast_dir)
+            blast_dir.cleanup()
 
         df = pd.read_excel(self.cross_reference)
         dictionary_of_genotypes = {}
