@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__version__ = "1.06"
+__version__ = "1.07"
 
 import os
 import sys
@@ -595,4 +595,4 @@ if __name__ == "__main__":  # execute if directly access by the interpreter
         shutil.rmtree(temp_dir)
 
 # Created 2023 by Tod Stuber
-# Tweaked 2024/2025 by Ashley Shalloe
+# Tweaked 2024/2025/2026 by Ashley Shalloe
